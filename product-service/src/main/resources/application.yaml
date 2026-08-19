@@ -1,3 +1,7 @@
 spring:
   application:
     name: product-service
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+    connection-timeout: 3s
+    socket-timeout: 30s

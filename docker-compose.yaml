@@ -1,9 +1,7 @@
 version: '3.8'
 
 services:
-  # ------------------------------------
-  # INFRAESTRUTURA (Imagens Oficiais)
-  # ------------------------------------
+  # Zookeeper Config
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -12,6 +10,7 @@ services:
     ports:
       - "2181:2181"
 
+  # Kafka Config
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka
@@ -28,8 +27,9 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+  # PostgreSQL Order Config
   postgres-order:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres-order
     environment:
       POSTGRES_DB: order_service
@@ -40,18 +40,20 @@ services:
     volumes:
       - postgres_order_data:/var/lib/postgresql/data
 
+  # PostgreSQL Inventory Config
   postgres-inventory:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres-inventory
     environment:
       POSTGRES_DB: inventory_service
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
     ports:
-      - "5433:5432" # Porta 5433 no host para evitar conflito
+      - "5433:5432"
     volumes:
       - postgres_inventory_data:/var/lib/postgresql/data
 
+  # MongoDB Config
   mongodb:
     image: mongo:latest
     container_name: mongo
@@ -60,6 +62,7 @@ services:
     volumes:
       - mongodb_data:/data/db
 
+  # Redis Config
   redis:
     image: redis:alpine
     container_name: redis
@@ -68,6 +71,7 @@ services:
     volumes:
       - redis_data:/data
 
+  # ElasticSearch Config
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
     container_name: elasticsearch
@@ -80,9 +84,7 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
 
-  # ------------------------------------
-  # SUAS APLICAÇÕES (Imagens Próprias)
-  # ------------------------------------
+  # Discovery Service Module Config
   discovery-server:
     image: lucasstorck/discovery-service:latest
     container_name: discovery-server
@@ -93,6 +95,7 @@ services:
       - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
       - EUREKA_CLIENT_FETCH_REGISTRY=false
 
+  # API Gateway Service Module Config
   api-gateway:
     image: lucasstorck/api-gateway:latest
     container_name: api-gateway
@@ -104,6 +107,7 @@ services:
       - SERVER_PORT=8080
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
 
+  # Product Service Module Config
   product-service:
     image: lucasstorck/product-service:latest
     container_name: product-service
@@ -120,6 +124,7 @@ services:
       - redis
       - discovery-server
 
+  # Order Service Module Config
   order-service:
     image: lucasstorck/order-service:latest
     container_name: order-service
@@ -135,6 +140,7 @@ services:
       - kafka
       - discovery-server
 
+  # Inventory Service Module Config
   inventory-service:
     image: lucasstorck/inventory-service:latest
     container_name: inventory-service
@@ -148,6 +154,7 @@ services:
       - postgres-inventory
       - discovery-server
 
+  # # Notification Service Module Config
   notification-service:
     image: lucasstorck/notification-service:latest
     container_name: notification-service
@@ -159,6 +166,7 @@ services:
       - kafka
       - discovery-server
 
+# Data Volumes
 volumes:
   postgres_order_data:
   postgres_inventory_data:

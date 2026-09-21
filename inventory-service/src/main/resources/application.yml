@@ -1,0 +1,13 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: jdbc:mysql://localhost:3308/inventory_service
+    username: root
+    password: root
+  jpa:
+    hibernate:
+      ddl-auto: update

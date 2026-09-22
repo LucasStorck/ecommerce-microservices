@@ -21,7 +21,7 @@ public class Order {
   @CreatedDate
   private Instant ordered;
   @Enumerated(EnumType.STRING)
-  private Status status;
+  private Status status = Status.PENDING;
   @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<OrderItem> orderItems;
 
@@ -51,6 +51,14 @@ public class Order {
 
   public void setOrdered(Instant ordered) {
     this.ordered = ordered;
+  }
+
+  public Status getStatus() {
+    return status;
+  }
+
+  public void setStatus(Status status) {
+    this.status = status;
   }
 
   public List<OrderItem> getOrderItems() {

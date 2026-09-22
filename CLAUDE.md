@@ -49,9 +49,19 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 ## Current state
 - Done: multi-module skeleton, Docker Compose, `product-service` model/repository/DTOs/mapper/service/controller/`GlobalExceptionHandler`.
 - `product-service` tested at runtime against real MongoDB: POST/GET return 201/200 with `createdAt`/`updatedAt` set and `price` as a proper number (DECIMAL128); 404 (`ProductNotFoundException`) and 400 (bean validation, via `fieldErrors`) confirmed manually with curl.
-- Eureka client on `product-service` currently logs connection-refused warnings on startup (retries against `localhost:8761`) since `discovery-server` isn't set up yet; harmless, expected until step 1 below.
+- `discovery-server` code is done (`@EnableEurekaServer`, self-preservation disabled for local dev) but **not yet run/verified** — see blocker below.
+
+## Known blocker (work PC only)
+On the work machine, running any Spring Boot app fails at startup with:
+```
+java.io.IOException: Unable to establish loopback connection
+  at sun.nio.ch.WEPollSelectorImpl...
+```
+This is the JVM (Java 25) failing to open its internal NIO loopback socket on Windows — happens with plain `mvnw spring-boot:run`, from both Git Bash and PowerShell, so it's not shell-specific. Most likely cause: corporate VPN/EDR/antivirus intercepting loopback sockets. Not a code issue.
+Until this is resolved (or tested on a machine without that restriction, e.g. home), builds/compiles are verified but nothing has been run. **Test `discovery-server` at home first**, then re-verify `product-service` still runs correctly there too.
 
 ## Next steps
-1. Discovery Server (Eureka server config), then API Gateway routes.
-2. Inventory, then Order (Resilience4j + Kafka producer), then Notification (Kafka consumer).
-3. Observability.
+1. At home: run `discovery-server` (`./mvnw -pl discovery-server spring-boot:run`), confirm dashboard at `localhost:8761`, then run `product-service` and confirm it registers (no more connection-refused warnings).
+2. API Gateway routes.
+3. Inventory, then Order (Resilience4j + Kafka producer), then Notification (Kafka consumer).
+4. Observability.

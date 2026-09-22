@@ -65,3 +65,15 @@ Until this is resolved (or tested on a machine without that restriction, e.g. ho
 2. API Gateway routes.
 3. Inventory, then Order (Resilience4j + Kafka producer), then Notification (Kafka consumer).
 4. Observability.
+5. Angular frontend, consuming the API through the Gateway (see below) — do this once step 2 is done, so there's a single base URL and no per-service CORS.
+
+## Future: Angular frontend
+Planned, not started. Decision: single Git repository, but **not** a Maven monorepo — `frontend/` sits at the root next to the Java modules, outside `<modules>` in the parent `pom.xml`, with its own `package.json` and Angular CLI build. Maven never touches it; CI would run the Java and Node builds as separate steps.
+```
+ecommerce-microservices/
+├── pom.xml            (Java modules, unchanged)
+├── discovery-server/
+├── api-gateway/
+├── ...
+└── frontend/           (Angular CLI owns this, not Maven)
+```

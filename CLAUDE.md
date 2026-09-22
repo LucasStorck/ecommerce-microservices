@@ -47,11 +47,11 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - Commits: Conventional Commits, in English (`feat(product-service): ...`, `build: ...`).
 
 ## Current state
-- Done: multi-module skeleton, Docker Compose, `product-service` model/repository/DTOs/mapper/service.
-- Not tested at runtime yet (only compiled).
+- Done: multi-module skeleton, Docker Compose, `product-service` model/repository/DTOs/mapper/service/controller/`GlobalExceptionHandler`.
+- `product-service` tested at runtime against real MongoDB: POST/GET return 201/200 with `createdAt`/`updatedAt` set and `price` as a proper number (DECIMAL128); 404 (`ProductNotFoundException`) and 400 (bean validation, via `fieldErrors`) confirmed manually with curl.
+- Eureka client on `product-service` currently logs connection-refused warnings on startup (retries against `localhost:8761`) since `discovery-server` isn't set up yet; harmless, expected until step 1 below.
 
 ## Next steps
-1. `product-service`: controller + `@RestControllerAdvice` (404 / 400); run against MongoDB and verify `createdAt` and numeric price.
-2. Discovery Server, then API Gateway routes.
-3. Inventory, then Order (Resilience4j + Kafka producer), then Notification (Kafka consumer).
-4. Observability.
+1. Discovery Server (Eureka server config), then API Gateway routes.
+2. Inventory, then Order (Resilience4j + Kafka producer), then Notification (Kafka consumer).
+3. Observability.

@@ -48,12 +48,13 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - Enums persisted with `@Enumerated(EnumType.STRING)`, never the `ORDINAL` default (breaks on reordering).
 - Indentation: 2 spaces in Java files.
 - Commits: Conventional Commits, in English (`feat(product-service): ...`, `build: ...`).
+- Git workflow: one feature branch per module/feature (e.g. `feat/order-service`), merged into `main` via PR (self-reviewed/self-approved is fine solo). Direct commits to `main` were used before this convention was adopted (up to and including the `order-service` model commits) — not retroactively redone.
 
 ## Current state
 - Done: multi-module skeleton, Docker Compose, `product-service` model/repository/DTOs/mapper/service/controller/`GlobalExceptionHandler`.
 - `product-service` tested at runtime against real MongoDB: POST/GET return 201/200 with `createdAt`/`updatedAt` set and `price` as a proper number (DECIMAL128); 404 (`ProductNotFoundException`) and 400 (bean validation, via `fieldErrors`) confirmed manually with curl.
 - `discovery-server` code is done (`@EnableEurekaServer`, self-preservation disabled for local dev) but **not yet run/verified** — see blocker below.
-- `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum, bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Repository/DTO/mapper/service/controller not started yet.
+- `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum (defaults to `PENDING`, with getter/setter), bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Being developed on branch `feat/order-service`. Repository/DTO/mapper/service/controller not started yet.
 
 ## Known blocker (work PC only)
 On the work machine, running any Spring Boot app fails at startup with:

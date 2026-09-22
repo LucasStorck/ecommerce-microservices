@@ -6,6 +6,12 @@ spring:
     name: discovery-server
 
 eureka:
+  server:
+    # Self-preservation assumes missed heartbeats mean a network issue and keeps
+    # stale instances registered. Fine for a real multi-node cluster, but during
+    # local dev (services restarted often, single node) it just leaves ghost
+    # entries in the dashboard. Safe to disable outside production.
+    enable-self-preservation: false
   client:
     register-with-eureka: false
     fetch-registry: false

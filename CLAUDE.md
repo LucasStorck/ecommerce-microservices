@@ -43,6 +43,9 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - Constructor injection (no field `@Autowired`).
 - Missing resources throw a custom exception (e.g. `ProductNotFoundException`), mapped to 404 by a `@RestControllerAdvice`.
 - Mongo: auditing enabled in `MongoConfig`; `BigDecimal` stored as `DECIMAL128`.
+- JPA: auditing enabled in `JpaConfig` (`@EnableJpaAuditing`), but each audited entity also needs `@EntityListeners(AuditingEntityListener.class)` itself — unlike Mongo, the config alone isn't enough.
+- Money columns: `@Column(precision = 10, scale = 2)` on `BigDecimal` fields.
+- Enums persisted with `@Enumerated(EnumType.STRING)`, never the `ORDINAL` default (breaks on reordering).
 - Indentation: 2 spaces in Java files.
 - Commits: Conventional Commits, in English (`feat(product-service): ...`, `build: ...`).
 
@@ -50,6 +53,7 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - Done: multi-module skeleton, Docker Compose, `product-service` model/repository/DTOs/mapper/service/controller/`GlobalExceptionHandler`.
 - `product-service` tested at runtime against real MongoDB: POST/GET return 201/200 with `createdAt`/`updatedAt` set and `price` as a proper number (DECIMAL128); 404 (`ProductNotFoundException`) and 400 (bean validation, via `fieldErrors`) confirmed manually with curl.
 - `discovery-server` code is done (`@EnableEurekaServer`, self-preservation disabled for local dev) but **not yet run/verified** — see blocker below.
+- `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum, bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Repository/DTO/mapper/service/controller not started yet.
 
 ## Known blocker (work PC only)
 On the work machine, running any Spring Boot app fails at startup with:

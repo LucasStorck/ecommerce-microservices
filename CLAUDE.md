@@ -48,6 +48,7 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - Enums persisted with `@Enumerated(EnumType.STRING)`, never the `ORDINAL` default (breaks on reordering).
 - Indentation: 2 spaces in Java files.
 - Commits: Conventional Commits, in English (`feat(product-service): ...`, `build: ...`).
+- `README.md` is the public, human-facing doc (minimal prose, English, no emoji, no tables). When a service is implemented, update it in the same change: add its `spring-boot:run` line to "Running locally" and drop its "Not implemented yet" / "Only the JPA model exists so far" note.
 
 ## Current state
 - Done: multi-module skeleton, Docker Compose, `product-service` model/repository/DTOs/mapper/service/controller/`GlobalExceptionHandler`.

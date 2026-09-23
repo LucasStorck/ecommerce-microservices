@@ -12,13 +12,14 @@ Requires Java 25 and Docker. Maven is not needed; the wrapper is included.
 docker compose up -d
 ./mvnw -pl discovery-server spring-boot:run
 ./mvnw -pl product-service spring-boot:run
+./mvnw -pl inventory-service spring-boot:run
 ./mvnw -pl api-gateway spring-boot:run
 ```
 
 Start discovery-server first, then the others in any order, each in its own
 terminal. The Eureka dashboard is at http://localhost:8761 and the API is
 served through the gateway at http://localhost:8080 (for example
-`/api/products`).
+`/api/products` or `/api/inventory`).
 
 ## Modules
 
@@ -53,6 +54,8 @@ live in one place. It is built on Gateway MVC (servlet-based), not WebFlux.
 Port 8081. The product catalog: create, read, update and delete products. It
 stores data in MongoDB, since products are read far more often than written
 and their attributes vary between categories, which suits a document model.
+Each product has a `skuCode`, the business identifier other services use to
+refer to it instead of its database id.
 
 ### order-service
 
@@ -69,9 +72,9 @@ Only the JPA model exists so far.
 
 Port 8083. Tracks stock per product and answers the availability check from
 order-service. Uses its own MySQL instance, separate from orders, so neither
-service can reach into the other's tables.
-
-Not implemented yet.
+service can reach into the other's tables. Stock is keyed by `skuCode`, and
+`GET /api/inventory?skuCode=A&skuCode=B` checks several items in one call,
+reporting unknown codes as quantity 0.
 
 ### notification-service
 

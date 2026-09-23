@@ -51,10 +51,12 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - `README.md` is the public, human-facing doc (minimal prose, English, no emoji, no tables). When a service is implemented, update it in the same change: add its `spring-boot:run` line to "Running locally" and drop its "Not implemented yet" / "Only the JPA model exists so far" note.
 
 ## Current state
-- Done: multi-module skeleton, Docker Compose, `product-service` model/repository/DTOs/mapper/service/controller/`GlobalExceptionHandler`.
+- Done: multi-module skeleton, Docker Compose, `product-service` and `inventory-service` (model/repository/DTOs/mapper/service/controller/`GlobalExceptionHandler`).
 - `product-service` tested at runtime against real MongoDB: POST/GET return 201/200 with `createdAt`/`updatedAt` set and `price` as a proper number (DECIMAL128); 404 (`ProductNotFoundException`) and 400 (bean validation, via `fieldErrors`) confirmed manually with curl.
 - `discovery-server` done and verified (in WSL): dashboard at `localhost:8761`, `product-service` registers as `UP`. Instances register with a WSL virtual-interface IP (`10.255.255.254`) instead of `localhost`; routing through it works, so no hostname override is configured.
-- `api-gateway`: Gateway MVC routes in `application.yml` (`spring.cloud.gateway.server.webmvc.routes`), resolved via Eureka with `lb://`. Only `/api/products/**` → `product-service` so far; verified that 200/201/404/400 pass through unchanged and unknown paths return 404. Add a route for each new service as it's implemented.
+- `api-gateway`: Gateway MVC routes in `application.yml` (`spring.cloud.gateway.server.webmvc.routes`), resolved via Eureka with `lb://`. Routes: `/api/products/**` → `product-service`, `/api/inventory/**` → `inventory-service`; verified that 200/201/404/400 pass through unchanged and unknown paths return 404. Add a route for each new service as it's implemented.
+- `skuCode` is the cross-service product identifier (not the Mongo id): required in `ProductRequest`, stored as `sku_code`. Products created before it was added have no `skuCode`.
+- `inventory-service` done and verified through the gateway: `Inventory` (JPA, `sku_code` unique, `quantity`, audited). `POST /api/inventory` (409 on duplicate skuCode), `GET /api/inventory/{skuCode}` (404 if missing), `PUT /api/inventory/{skuCode}` sets an absolute quantity, and `GET /api/inventory?skuCode=A&skuCode=B` is the batch stock check for order-service: one entry per distinct requested code, unknown codes reported as quantity 0. Stock is not yet decremented when an order is placed; that belongs to the order flow.
 - `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum, bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Repository/DTO/mapper/service/controller not started yet.
 
 ## Known blocker (work PC only)
@@ -67,7 +69,7 @@ This is the JVM (Java 25) failing to open its internal NIO loopback socket on Wi
 Running everything inside WSL (Ubuntu) avoids it: all services start and work there.
 
 ## Next steps
-1. Inventory, then Order (Resilience4j + Kafka producer), then Notification (Kafka consumer) — adding each one's Gateway route.
+1. Order (calls the inventory batch check with Resilience4j; Kafka producer), then Notification (Kafka consumer) — adding each one's Gateway route.
 2. Observability.
 3. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
 

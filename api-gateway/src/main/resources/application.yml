@@ -4,3 +4,17 @@ server:
 spring:
   application:
     name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          # Routes are declared here (not in Java) so they read as a table.
+          # "lb://<name>" resolves the target through Eureka + Spring Cloud
+          # LoadBalancer, so the gateway never hardcodes a host/port and would
+          # spread traffic across instances if a service ran more than once.
+          # Other services get a route as each one is implemented.
+          routes:
+            - id: product-service
+              uri: lb://product-service
+              predicates:
+                - Path=/api/products/**

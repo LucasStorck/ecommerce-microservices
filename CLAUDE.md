@@ -37,7 +37,7 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - `ddl-auto: update` and `root/root` passwords are for local dev only.
 
 ## Code conventions
-- Layers: `model`, `repository`, `dto`, `mapper`, `service` (interface + `Impl`), `exception`, `config`, `controller`.
+- Layers: `model`, `repository`, `dto`, `mapper`, `service` (interface + `Impl`), `exception`, `config`, `controller`; plus `client` (interface + `Impl`) for calls to other services.
 - DTOs are records; requests carry bean validation (`@NotBlank`, `@Positive`, ...) and controllers use `@Valid`.
 - Never expose entities in the API; clients must not set `id`, `createdAt`, `updatedAt`.
 - Constructor injection (no field `@Autowired`).
@@ -58,7 +58,8 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - `api-gateway`: Gateway MVC routes in `application.yml` (`spring.cloud.gateway.server.webmvc.routes`), resolved via Eureka with `lb://`. Routes: `/api/products/**` → `product-service`, `/api/inventory/**` → `inventory-service`; verified that 200/201/404/400 pass through unchanged and unknown paths return 404. Add a route for each new service as it's implemented.
 - `skuCode` is the cross-service product identifier (not the Mongo id): required in `ProductRequest`, stored as `sku_code`. Products created before it was added have no `skuCode`.
 - `inventory-service` done and verified through the gateway: `Inventory` (JPA, `sku_code` unique, `quantity`, audited). `POST /api/inventory` (409 on duplicate skuCode), `GET /api/inventory/{skuCode}` (404 if missing), `PUT /api/inventory/{skuCode}` sets an absolute quantity, and `GET /api/inventory?skuCode=A&skuCode=B` is the batch stock check for order-service: one entry per distinct requested code, unknown codes reported as quantity 0. Stock is not yet decremented when an order is placed; that belongs to the order flow.
-- `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum (defaults to `PENDING`, with getter/setter), bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Being developed on branch `feat/order-service`. Repository (`@EntityGraph` on `findAll`/`findById` to avoid N+1), DTOs, `OrderMapper` (MapStruct, `@AfterMapping` links items to their order, `total` computed in the mapper), `OrderServiceImpl` (`placeOrder`/`getAllOrders`/`getOrderById`), `OrderController` (`/api/orders`) and `GlobalExceptionHandler` are done and **compile** (not yet run). `price` still comes from the client — to be sourced from `product-service` later. Still missing: inventory call (Resilience4j, using the batch stock check above), Kafka event, status transitions, gateway route for `/api/orders/**`.
+- `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum (defaults to `PENDING`, with getter/setter), bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Repository (`@EntityGraph` on `findAll`/`findById` to avoid N+1), DTOs, `OrderMapper` (MapStruct, `@AfterMapping` links items to their order, `total` computed in the mapper), `OrderServiceImpl` (`placeOrder`/`getAllOrders`/`getOrderById`), `OrderController` (`/api/orders`, routed by the gateway) and `GlobalExceptionHandler` are done.
+- `order-service` → `inventory-service` (branch `feat/order-inventory-call`): `placeOrder` calls the batch stock check through `InventoryClient` (`@LoadBalanced` `RestClient`, `http://inventory-service` resolved by Eureka; HTTP timeouts 1s connect / 2s read) wrapped in a Resilience4j circuit breaker `inventory` (configured in `InventoryClientConfig`: window 10, min 5 calls, 50% failure, 10s open, 3s time limiter — Spring Cloud's default time limiter is 1s, which is why it's overridden). Quantities are summed per skuCode before comparing. Insufficient stock → 409 (`InsufficientStockException`); inventory down/slow/circuit open → 503 (`InventoryUnavailableException`, fail closed). `placeOrder` is intentionally not `@Transactional` so the remote call doesn't hold a DB connection. Known limitation: stock is checked, not reserved or decremented, so concurrent orders can oversell. **Compiles but not yet run** — verify at home/WSL. `price` still comes from the client — to be sourced from `product-service` later. Still missing: Kafka event, status transitions, stock decrement/reservation.
 
 ## Known blocker (work PC only)
 On the work machine, running any Spring Boot app fails at startup with:
@@ -70,7 +71,7 @@ This is the JVM (Java 25) failing to open its internal NIO loopback socket on Wi
 Running everything inside WSL (Ubuntu) avoids it: all services start and work there.
 
 ## Next steps
-1. Order (calls the inventory batch check with Resilience4j; Kafka producer), then Notification (Kafka consumer) — adding each one's Gateway route.
+1. Verify the order → inventory call at runtime (happy path, 409, 503 with inventory stopped, circuit opening). Then Order's Kafka producer, then Notification (Kafka consumer) — adding each one's Gateway route.
 2. Observability.
 3. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
 

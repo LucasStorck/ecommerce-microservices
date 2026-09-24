@@ -48,6 +48,7 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - Enums persisted with `@Enumerated(EnumType.STRING)`, never the `ORDINAL` default (breaks on reordering).
 - Indentation: 2 spaces in Java files.
 - Commits: Conventional Commits, in English (`feat(product-service): ...`, `build: ...`).
+- Git workflow: one feature branch per module/feature (e.g. `feat/order-service`), merged into `main` via PR (self-reviewed/self-approved is fine solo). Direct commits to `main` were used before this convention was adopted (up to and including the `order-service` model commits) — not retroactively redone.
 - `README.md` is the public, human-facing doc (minimal prose, English, no emoji, no tables). When a service is implemented, update it in the same change: add its `spring-boot:run` line to "Running locally" and drop its "Not implemented yet" / "Only the JPA model exists so far" note.
 
 ## Current state
@@ -57,7 +58,7 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - `api-gateway`: Gateway MVC routes in `application.yml` (`spring.cloud.gateway.server.webmvc.routes`), resolved via Eureka with `lb://`. Routes: `/api/products/**` → `product-service`, `/api/inventory/**` → `inventory-service`; verified that 200/201/404/400 pass through unchanged and unknown paths return 404. Add a route for each new service as it's implemented.
 - `skuCode` is the cross-service product identifier (not the Mongo id): required in `ProductRequest`, stored as `sku_code`. Products created before it was added have no `skuCode`.
 - `inventory-service` done and verified through the gateway: `Inventory` (JPA, `sku_code` unique, `quantity`, audited). `POST /api/inventory` (409 on duplicate skuCode), `GET /api/inventory/{skuCode}` (404 if missing), `PUT /api/inventory/{skuCode}` sets an absolute quantity, and `GET /api/inventory?skuCode=A&skuCode=B` is the batch stock check for order-service: one entry per distinct requested code, unknown codes reported as quantity 0. Stock is not yet decremented when an order is placed; that belongs to the order flow.
-- `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum, bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Repository/DTO/mapper/service/controller not started yet.
+- `order-service`: `Order`/`OrderItem` JPA models done, with `Status` enum (defaults to `PENDING`, with getter/setter), bidirectional mapping (`Order` mappedBy, cascade ALL + orphanRemoval; `OrderItem` owns the `order_id` FK), money precision, and `JpaConfig`. Being developed on branch `feat/order-service`. Repository (`@EntityGraph` on `findAll`/`findById` to avoid N+1), DTOs, `OrderMapper` (MapStruct, `@AfterMapping` links items to their order, `total` computed in the mapper), `OrderServiceImpl` (`placeOrder`/`getAllOrders`/`getOrderById`), `OrderController` (`/api/orders`) and `GlobalExceptionHandler` are done and **compile** (not yet run). `price` still comes from the client — to be sourced from `product-service` later. Still missing: inventory call (Resilience4j, using the batch stock check above), Kafka event, status transitions, gateway route for `/api/orders/**`.
 
 ## Known blocker (work PC only)
 On the work machine, running any Spring Boot app fails at startup with:

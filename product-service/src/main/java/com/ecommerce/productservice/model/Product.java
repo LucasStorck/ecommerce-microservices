@@ -14,6 +14,8 @@ public class Product {
 
   @MongoId
   private String id;
+  @Field("sku_code")
+  private String skuCode;
   private String name;
   private String description;
   @Field("created_at")
@@ -27,8 +29,9 @@ public class Product {
   public Product() {
   }
 
-  public Product(String id, String name, String description, Instant createdAt, Instant updatedAt, BigDecimal price) {
+  public Product(String id, String skuCode, String name, String description, Instant createdAt, Instant updatedAt, BigDecimal price) {
     this.id = id;
+    this.skuCode = skuCode;
     this.name = name;
     this.description = description;
     this.createdAt = createdAt;
@@ -42,6 +45,14 @@ public class Product {
 
   public void setId(String id) {
     this.id = id;
+  }
+
+  public String getSkuCode() {
+    return skuCode;
+  }
+
+  public void setSkuCode(String skuCode) {
+    this.skuCode = skuCode;
   }
 
   public String getName() {

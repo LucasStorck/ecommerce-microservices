@@ -13,3 +13,7 @@ spring:
       ddl-auto: update
   kafka:
     bootstrap-servers: localhost:9092
+
+# Eureka service name, not a host: resolved by the load-balanced RestClient.
+inventory:
+  url: http://inventory-service

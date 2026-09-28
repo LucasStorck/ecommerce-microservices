@@ -6,7 +6,7 @@ Owner is a developer who wants to **understand** the code: explain decisions and
 ## Stack
 - Java 25 (LTS), Spring Boot 4.1.1, Spring Cloud 2025.1.3
 - Maven multi-module (wrapper included: use `./mvnw`, Maven is not required)
-- Docker Compose for infra: MySQL x2, MongoDB, Kafka (KRaft)
+- Docker Compose for infra: PostgreSQL x2, MongoDB, Kafka (KRaft)
 - MapStruct 1.6.3 for DTO/entity mapping (version in the parent pom)
 
 ## Modules
@@ -15,22 +15,22 @@ Owner is a developer who wants to **understand** the code: explain decisions and
 | `discovery-server`     | 8761 | Eureka server                                                     | -                               |
 | `api-gateway`          | 8080 | Single entry point (Gateway MVC, not WebFlux)                     | -                               |
 | `product-service`      | 8081 | Product catalog                                                   | MongoDB (`localhost:27017`)     |
-| `order-service`        | 8082 | Orders; calls inventory with Resilience4j; publishes Kafka events | MySQL (`localhost:3307`), Kafka |
-| `inventory-service`    | 8083 | Stock                                                             | MySQL (`localhost:3308`)        |
+| `order-service`        | 8082 | Orders; calls inventory with Resilience4j; publishes Kafka events | PostgreSQL (`localhost:5433`), Kafka |
+| `inventory-service`    | 8083 | Stock                                                             | PostgreSQL (`localhost:5434`)        |
 | `notification-service` | 8084 | Consumes order events                                             | Kafka (`localhost:9092`)        |
 
 Each service is a child module of the root `pom.xml` (packaging `pom`); versions are managed only there.
 
 ## Commands
 ```bash
-docker compose up -d                 # start MySQL, MongoDB, Kafka
+docker compose up -d                 # start PostgreSQL, MongoDB, Kafka
 ./mvnw package -DskipTests           # build all modules
 ./mvnw -pl product-service compile   # build one module
 ./mvnw -pl product-service spring-boot:run
 ```
 
 ## Architecture decisions
-- Database per service (two separate MySQL instances). Product uses MongoDB (flexible attributes, read-heavy); Order/Inventory use MySQL (transactional consistency).
+- Database per service (two separate PostgreSQL instances). Product uses MongoDB (flexible attributes, read-heavy); Order/Inventory use PostgreSQL (transactional consistency).
 - Order → Inventory is synchronous (Resilience4j circuit breaker); Order → Notification is asynchronous via Kafka.
 - **No Keycloak / OAuth2** in this project. Do not add security dependencies.
 - **Observability is deferred** (Micrometer, Zipkin, Prometheus, Grafana). Actuator is already included.
@@ -62,6 +62,7 @@ docker compose up -d                 # start MySQL, MongoDB, Kafka
 - `order-service` → `inventory-service`: `placeOrder` calls the batch stock check through `InventoryClient` (`@LoadBalanced` `RestClient`, `http://inventory-service` resolved by Eureka; HTTP timeouts 1s connect / 2s read) wrapped in a Resilience4j circuit breaker `inventory` (configured in `InventoryClientConfig`: window 10, min 5 calls, 50% failure, 10s open, 3s time limiter — Spring Cloud's default time limiter is 1s, which is why it's overridden). Quantities are summed per skuCode before comparing. Insufficient stock → 409 (`InsufficientStockException`); inventory down/slow/circuit open → 503 (`InventoryUnavailableException`, fail closed). `placeOrder` is intentionally not `@Transactional` so the remote call doesn't hold a DB connection. Known limitation: stock is checked, not reserved or decremented, so concurrent orders can oversell. **Verified at runtime (WSL)**: happy path (201), insufficient stock (409), inventory-service stopped (503, fail closed). `price` still comes from the client — to be sourced from `product-service` later. Still missing: Kafka event, status transitions, stock decrement/reservation.
 - Liquibase adopted for `order-service` and `inventory-service` (changelogs in `db/changelog/`, `db.changelog-master.yaml` includes each numbered changeset). `ddl-auto` switched from `update` to `validate` in both, since Liquibase now owns schema creation — leaving `update` on caused Hibernate to fight Liquibase's tables on every startup (harmless in `order-service`, fatal in `inventory-service` where a table from a pre-Liquibase run already existed; fixed locally by dropping that dev volume, not by changing the changelog).
 - Fixed a real bug found while verifying the above at runtime: `InventoryClientConfig` exposed only one `RestClient.Builder` bean, marked `@LoadBalanced`. Since nothing else provided an unqualified one, Eureka's own internal HTTP client (which also autowires `RestClient.Builder`) picked up the load-balanced version and tried to resolve `localhost` (from its own `serviceUrl`) through the load balancer as if it were a service name — `order-service` registered but could never send a heartbeat. Fix: added a second, `@Primary`, plain `RestClient.Builder` bean so only the explicit `@LoadBalanced` injection point (`InventoryClientImpl`) gets the special one.
+- `order-service` and `inventory-service` migrated from MySQL to PostgreSQL (`feat/postgresql` branch, off `feat/liquibase`), to match the owner's main stack: `postgres:17` in `docker-compose.yml` (ports 5433/5434), `mysql-connector-j` → `org.postgresql:postgresql` in both poms, datasource URLs updated. Liquibase changelogs untouched — their column types (`DATETIME`, `DECIMAL`, `VARCHAR`, `INT`) are Liquibase's portable abstract types, translated per-database automatically, so no changeset edits were needed. `./mvnw package -DskipTests` confirmed clean, but **not yet verified at runtime**: Docker Desktop wasn't running locally when this was made, so the changesets haven't actually been applied against real PostgreSQL yet — do that next (in WSL, per the known blocker below) before merging.
 
 ## Known blocker (work PC only)
 On the work machine, running any Spring Boot app fails at startup with:
@@ -74,9 +75,10 @@ Running everything inside WSL (Ubuntu) avoids it: all services start and work th
 
 ## Next steps
 1. Merge `feat/liquibase` into `main` (includes the order→inventory call, its gateway route, and the Liquibase changelogs — all verified at runtime now).
-2. Order's Kafka producer, then Notification (Kafka consumer) — adding each one's Gateway route.
-3. Observability.
-4. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
+2. Verify `feat/postgresql` at runtime in WSL (Liquibase changesets against real PostgreSQL, full order/inventory flow), then merge it too.
+3. Order's Kafka producer, then Notification (Kafka consumer) — adding each one's Gateway route.
+4. Observability.
+5. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
 
 ## Future: Angular frontend
 Planned, not started. Decision: single Git repository, but **not** a Maven monorepo — `frontend/` sits at the root next to the Java modules, outside `<modules>` in the parent `pom.xml`, with its own `package.json` and Angular CLI build. Maven never touches it; CI would run the Java and Node builds as separate steps.

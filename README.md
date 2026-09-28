@@ -29,7 +29,7 @@ process, owns its own data, and is a child module of the root `pom.xml`.
 
 ```
 client -> api-gateway -> product-service    (MongoDB)
-                      -> order-service      (MySQL) -> inventory-service (MySQL)
+                      -> order-service      (PostgreSQL) -> inventory-service (PostgreSQL)
                                              \
                                               -> Kafka -> notification-service
 
@@ -64,7 +64,7 @@ Port 8082. Receives orders and manages their lifecycle. Before accepting an
 order it asks inventory-service whether the items are in stock. That call is
 synchronous and wrapped in a Resilience4j circuit breaker, so a slow or failing
 inventory service does not take orders down with it. Once an order is placed,
-it publishes an event to Kafka. Data lives in MySQL, where transactions keep
+it publishes an event to Kafka. Data lives in PostgreSQL, where transactions keep
 an order and its items consistent.
 
 Orders can be placed and read. Placing one checks stock first: if an item is
@@ -75,7 +75,7 @@ event is not implemented yet.
 ### inventory-service
 
 Port 8083. Tracks stock per product and answers the availability check from
-order-service. Uses its own MySQL instance, separate from orders, so neither
+order-service. Uses its own PostgreSQL instance, separate from orders, so neither
 service can reach into the other's tables. Stock is keyed by `skuCode`, and
 `GET /api/inventory?skuCode=A&skuCode=B` checks several items in one call,
 reporting unknown codes as quantity 0.
@@ -90,6 +90,6 @@ Not implemented yet.
 
 ## Infrastructure
 
-`docker-compose.yml` starts what the services depend on: two MySQL instances
-(orders on 3307, inventory on 3308), MongoDB on 27017 and a single-node Kafka
+`docker-compose.yml` starts what the services depend on: two PostgreSQL instances
+(orders on 5433, inventory on 5434), MongoDB on 27017 and a single-node Kafka
 broker in KRaft mode on 9092.

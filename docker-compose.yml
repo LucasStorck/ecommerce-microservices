@@ -1,34 +1,36 @@
 name: ecommerce
 
 services:
-  mysql-order:
-    image: mysql:8.4
-    container_name: mysql-order
+  postgres-order:
+    image: postgres:17
+    container_name: postgres-order
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: order_service
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: order_service
     ports:
-      - "3307:3306"
+      - "5433:5432"
     volumes:
-      - mysql-order-data:/var/lib/mysql
+      - postgres-order-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      test: ["CMD", "pg_isready", "-U", "root", "-d", "order_service"]
       interval: 10s
       timeout: 5s
       retries: 10
 
-  mysql-inventory:
-    image: mysql:8.4
-    container_name: mysql-inventory
+  postgres-inventory:
+    image: postgres:17
+    container_name: postgres-inventory
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: inventory_service
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: inventory_service
     ports:
-      - "3308:3306"
+      - "5434:5432"
     volumes:
-      - mysql-inventory-data:/var/lib/mysql
+      - postgres-inventory-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      test: ["CMD", "pg_isready", "-U", "root", "-d", "inventory_service"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -68,7 +70,7 @@ services:
       - kafka-data:/var/lib/kafka/data
 
 volumes:
-  mysql-order-data:
-  mysql-inventory-data:
+  postgres-order-data:
+  postgres-inventory-data:
   mongo-data:
   kafka-data:

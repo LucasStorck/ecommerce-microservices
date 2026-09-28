@@ -73,10 +73,9 @@ This is the JVM (Java 25) failing to open its internal NIO loopback socket on Wi
 Running everything inside WSL (Ubuntu) avoids it: all services start and work there.
 
 ## Next steps
-1. Merge `feat/liquibase` into `main` (includes the order→inventory call, its gateway route, and the Liquibase changelogs — all verified at runtime now).
-2. Order's Kafka producer, then Notification (Kafka consumer) — adding each one's Gateway route.
-3. Observability.
-4. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
+1. Order's Kafka producer (publish an event once `placeOrder` succeeds), then Notification (Kafka consumer) — adding each one's Gateway route.
+2. Observability.
+3. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
 
 ## Future: Angular frontend
 Planned, not started. Decision: single Git repository, but **not** a Maven monorepo — `frontend/` sits at the root next to the Java modules, outside `<modules>` in the parent `pom.xml`, with its own `package.json` and Angular CLI build. Maven never touches it; CI would run the Java and Node builds as separate steps.

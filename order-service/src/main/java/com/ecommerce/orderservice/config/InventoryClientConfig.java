@@ -7,6 +7,7 @@ import org.springframework.cloud.client.circuitbreaker.Customizer;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
@@ -28,6 +29,16 @@ public class InventoryClientConfig {
     requestFactory.setConnectTimeout(Duration.ofSeconds(1));
     requestFactory.setReadTimeout(Duration.ofSeconds(2));
     return RestClient.builder().requestFactory(requestFactory);
+  }
+
+  // Without this, the @LoadBalanced builder above is the only RestClient.Builder bean in the
+  // context, so Eureka's own HTTP client (which autowires RestClient.Builder unqualified)
+  // picks it up too and tries to resolve "localhost" as a service name through the load
+  // balancer instead of using it as a literal host — breaking registration entirely.
+  @Bean
+  @Primary
+  public RestClient.Builder restClientBuilder() {
+    return RestClient.builder();
   }
 
   @Bean

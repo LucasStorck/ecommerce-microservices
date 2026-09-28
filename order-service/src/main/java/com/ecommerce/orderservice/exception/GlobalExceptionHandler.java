@@ -16,12 +16,19 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(OrderNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleOrderNotFound(OrderNotFoundException ex, HttpServletRequest request) {
-    ErrorResponse errorResponse = new ErrorResponse(
-        HttpStatus.NOT_FOUND.value(),
-        HttpStatus.NOT_FOUND.getReasonPhrase(),
-        ex.getMessage(),
-        request.getRequestURI());
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    return error(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+  }
+
+  @ExceptionHandler(InsufficientStockException.class)
+  public ResponseEntity<ErrorResponse> handleInsufficientStock(InsufficientStockException ex,
+                                                               HttpServletRequest request) {
+    return error(HttpStatus.CONFLICT, ex.getMessage(), request);
+  }
+
+  @ExceptionHandler(InventoryUnavailableException.class)
+  public ResponseEntity<ErrorResponse> handleInventoryUnavailable(InventoryUnavailableException ex,
+                                                                  HttpServletRequest request) {
+    return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -36,6 +43,11 @@ public class GlobalExceptionHandler {
         request.getRequestURI(),
         fieldErrors);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+  }
+
+  private ResponseEntity<ErrorResponse> error(HttpStatus status, String message, HttpServletRequest request) {
+    return ResponseEntity.status(status)
+        .body(new ErrorResponse(status.value(), status.getReasonPhrase(), message, request.getRequestURI()));
   }
 
   private String message(FieldError fieldError) {

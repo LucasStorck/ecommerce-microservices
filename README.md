@@ -13,13 +13,14 @@ docker compose up -d
 ./mvnw -pl discovery-server spring-boot:run
 ./mvnw -pl product-service spring-boot:run
 ./mvnw -pl inventory-service spring-boot:run
+./mvnw -pl order-service spring-boot:run
 ./mvnw -pl api-gateway spring-boot:run
 ```
 
 Start discovery-server first, then the others in any order, each in its own
 terminal. The Eureka dashboard is at http://localhost:8761 and the API is
 served through the gateway at http://localhost:8080 (for example
-`/api/products` or `/api/inventory`).
+`/api/products`, `/api/inventory` or `/api/orders`).
 
 ## Modules
 
@@ -66,7 +67,10 @@ inventory service does not take orders down with it. Once an order is placed,
 it publishes an event to Kafka. Data lives in MySQL, where transactions keep
 an order and its items consistent.
 
-Only the JPA model exists so far.
+Orders can be placed and read. Placing one checks stock first: if an item is
+short the order is rejected with 409, and if inventory-service cannot answer in
+time the order is rejected with 503 rather than accepted unchecked. The Kafka
+event is not implemented yet.
 
 ### inventory-service
 

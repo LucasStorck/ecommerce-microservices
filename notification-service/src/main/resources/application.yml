@@ -8,3 +8,13 @@ spring:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: notification-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        # The producer's JsonSerializer stamps the message with its own class name
+        # (com.ecommerce.orderservice.event.OrderPlacedEvent), which does not exist on this
+        # service's classpath. Ignore that header and always deserialize into this service's
+        # own copy of the contract instead.
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.ecommerce.notificationservice.event.OrderPlacedEvent
+        spring.json.trusted.packages: com.ecommerce.notificationservice.event

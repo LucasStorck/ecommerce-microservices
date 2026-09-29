@@ -5,6 +5,9 @@ import com.ecommerce.orderservice.dto.OrderItemRequest;
 import com.ecommerce.orderservice.dto.OrderRequest;
 import com.ecommerce.orderservice.dto.OrderResponse;
 import com.ecommerce.orderservice.dto.StockResponse;
+import com.ecommerce.orderservice.event.OrderEventProducer;
+import com.ecommerce.orderservice.event.OrderItemEvent;
+import com.ecommerce.orderservice.event.OrderPlacedEvent;
 import com.ecommerce.orderservice.exception.InsufficientStockException;
 import com.ecommerce.orderservice.exception.OrderNotFoundException;
 import com.ecommerce.orderservice.mapper.OrderMapper;
@@ -25,12 +28,14 @@ public class OrderServiceImpl implements OrderService {
   private final OrderRepository orderRepository;
   private final OrderMapper orderMapper;
   private final InventoryClient inventoryClient;
+  private final OrderEventProducer orderEventProducer;
 
   public OrderServiceImpl(OrderRepository orderRepository, OrderMapper orderMapper,
-                          InventoryClient inventoryClient) {
+                          InventoryClient inventoryClient, OrderEventProducer orderEventProducer) {
     this.orderRepository = orderRepository;
     this.orderMapper = orderMapper;
     this.inventoryClient = inventoryClient;
+    this.orderEventProducer = orderEventProducer;
   }
 
   // Deliberately not @Transactional: the inventory call is remote and can take seconds, and
@@ -41,7 +46,18 @@ public class OrderServiceImpl implements OrderService {
     verifyStock(orderRequest);
     Order order = orderMapper.toEntity(orderRequest);
     order.setOrderNumber(UUID.randomUUID().toString());
-    return orderMapper.toResponse(orderRepository.save(order));
+    Order savedOrder = orderRepository.save(order);
+    publishOrderPlaced(savedOrder);
+    return orderMapper.toResponse(savedOrder);
+  }
+
+  private void publishOrderPlaced(Order order) {
+    List<OrderItemEvent> items = order.getOrderItems().stream()
+        .map(item -> new OrderItemEvent(item.getSkuCode(), item.getQuantity()))
+        .toList();
+    OrderPlacedEvent event = new OrderPlacedEvent(order.getOrderNumber(), order.getOrdered(),
+        orderMapper.calculateTotal(order), items);
+    orderEventProducer.publishOrderPlaced(event);
   }
 
   @Override

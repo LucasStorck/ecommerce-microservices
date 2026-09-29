@@ -14,6 +14,7 @@ docker compose up -d
 ./mvnw -pl product-service spring-boot:run
 ./mvnw -pl inventory-service spring-boot:run
 ./mvnw -pl order-service spring-boot:run
+./mvnw -pl notification-service spring-boot:run
 ./mvnw -pl api-gateway spring-boot:run
 ```
 
@@ -74,8 +75,9 @@ an order and its items consistent.
 
 Orders can be placed and read. Placing one checks stock first: if an item is
 short the order is rejected with 409, and if inventory-service cannot answer in
-time the order is rejected with 503 rather than accepted unchecked. The Kafka
-event is not implemented yet.
+time the order is rejected with 503 rather than accepted unchecked. Once saved,
+an `order-placed-events` event is published to Kafka; publishing does not block
+the response, so a slow or unavailable broker does not hold up placing an order.
 
 ### inventory-service
 
@@ -91,7 +93,9 @@ Port 8084. Listens for order events on Kafka and notifies the customer. Because
 it is asynchronous, order-service does not wait for it, and a notification
 failure never blocks an order. It has no database.
 
-Not implemented yet.
+Consumes `order-placed-events` and logs a simulated notification for each one
+(no real email/SMS provider is wired in). Notifications are kept in memory,
+not persisted, and can be listed with `GET /api/notifications`.
 
 ## Infrastructure
 

@@ -58,6 +58,11 @@ and their attributes vary between categories, which suits a document model.
 Each product has a `skuCode`, the business identifier other services use to
 refer to it instead of its database id.
 
+Reads by id are cached in Redis (10 minute TTL) to take repeated lookups off
+MongoDB. Updates refresh the cached entry and deletes evict it, so the cache
+never serves stale data past the next write; the product listing is not
+cached.
+
 ### order-service
 
 Port 8082. Receives orders and manages their lifecycle. Before accepting an
@@ -91,5 +96,5 @@ Not implemented yet.
 ## Infrastructure
 
 `docker-compose.yml` starts what the services depend on: two PostgreSQL instances
-(orders on 5433, inventory on 5434), MongoDB on 27017 and a single-node Kafka
-broker in KRaft mode on 9092.
+(orders on 5433, inventory on 5434), MongoDB on 27017, a single-node Kafka
+broker in KRaft mode on 9092, and Redis on 6379.

@@ -6,6 +6,9 @@ import com.ecommerce.productservice.exception.ProductNotFoundException;
 import com.ecommerce.productservice.mapper.ProductMapper;
 import com.ecommerce.productservice.model.Product;
 import com.ecommerce.productservice.repository.ProductRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -35,11 +38,13 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
+  @Cacheable(value = "products", key = "#id")
   public ProductResponse getProductById(String id) {
     return productMapper.toResponse(findOrThrow(id));
   }
 
   @Override
+  @CachePut(value = "products", key = "#id")
   public ProductResponse updateProduct(String id, ProductRequest productRequest) {
     Product product = findOrThrow(id);
     productMapper.updateEntity(productRequest, product);
@@ -47,6 +52,7 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
+  @CacheEvict(value = "products", key = "#id")
   public void deleteProduct(String id) {
     if (!productRepository.existsById(id)) {
       throw new ProductNotFoundException(id);

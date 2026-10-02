@@ -3,6 +3,7 @@ package com.ecommerce.inventoryservice.controller;
 import com.ecommerce.inventoryservice.dto.InventoryRequest;
 import com.ecommerce.inventoryservice.dto.InventoryResponse;
 import com.ecommerce.inventoryservice.dto.QuantityRequest;
+import com.ecommerce.inventoryservice.dto.ReservationRequest;
 import com.ecommerce.inventoryservice.dto.StockResponse;
 import com.ecommerce.inventoryservice.service.InventoryService;
 import jakarta.validation.Valid;
@@ -38,6 +39,21 @@ public class InventoryController {
   @GetMapping
   public List<StockResponse> checkStock(@RequestParam("skuCode") List<String> skuCodes) {
     return inventoryService.checkStock(skuCodes);
+  }
+
+  // Atomically takes stock for an order: 204 if every item was reserved, 409 (with the
+  // short skus) if not, in which case nothing is taken.
+  @PostMapping("/reserve")
+  public ResponseEntity<Void> reserve(@Valid @RequestBody ReservationRequest reservationRequest) {
+    inventoryService.reserve(reservationRequest);
+    return ResponseEntity.noContent().build();
+  }
+
+  // Gives back a previous reservation (compensation when the order could not be saved).
+  @PostMapping("/release")
+  public ResponseEntity<Void> release(@Valid @RequestBody ReservationRequest reservationRequest) {
+    inventoryService.release(reservationRequest);
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{skuCode}")

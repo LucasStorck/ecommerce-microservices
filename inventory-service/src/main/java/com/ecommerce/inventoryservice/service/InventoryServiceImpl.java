@@ -3,7 +3,10 @@ package com.ecommerce.inventoryservice.service;
 import com.ecommerce.inventoryservice.dto.InventoryRequest;
 import com.ecommerce.inventoryservice.dto.InventoryResponse;
 import com.ecommerce.inventoryservice.dto.QuantityRequest;
+import com.ecommerce.inventoryservice.dto.ReservationItem;
+import com.ecommerce.inventoryservice.dto.ReservationRequest;
 import com.ecommerce.inventoryservice.dto.StockResponse;
+import com.ecommerce.inventoryservice.exception.InsufficientStockException;
 import com.ecommerce.inventoryservice.exception.InventoryAlreadyExistsException;
 import com.ecommerce.inventoryservice.exception.InventoryNotFoundException;
 import com.ecommerce.inventoryservice.mapper.InventoryMapper;
@@ -67,6 +70,34 @@ public class InventoryServiceImpl implements InventoryService {
         .distinct()
         .map(skuCode -> new StockResponse(skuCode, quantities.getOrDefault(skuCode, 0)))
         .toList();
+  }
+
+  /**
+   * All-or-nothing: if any item falls short the exception rolls back the decrements already
+   * applied to the other items, so an order never half-reserves. Every shortfall is collected
+   * (not just the first) so the caller can report them all at once.
+   */
+  @Override
+  @Transactional
+  public void reserve(ReservationRequest reservationRequest) {
+    List<String> insufficient = reservationRequest.items().stream()
+        .filter(item -> inventoryRepository.decrementIfAvailable(item.skuCode(), item.quantity()) == 0)
+        .map(ReservationItem::skuCode)
+        .toList();
+
+    if (!insufficient.isEmpty()) {
+      throw new InsufficientStockException(insufficient);
+    }
+  }
+
+  /**
+   * Compensation for reserve, used when the order could not be saved afterwards. A skuCode
+   * with no inventory record is ignored: there is nothing to give back to.
+   */
+  @Override
+  @Transactional
+  public void release(ReservationRequest reservationRequest) {
+    reservationRequest.items().forEach(item -> inventoryRepository.increment(item.skuCode(), item.quantity()));
   }
 
   private Inventory findOrThrow(String skuCode) {

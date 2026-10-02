@@ -1,5 +1,6 @@
 package com.ecommerce.inventoryservice.exception;
 
+import com.ecommerce.inventoryservice.dto.StockShortageResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleInventoryAlreadyExists(InventoryAlreadyExistsException ex,
                                                                     HttpServletRequest request) {
     return error(HttpStatus.CONFLICT, ex.getMessage(), request);
+  }
+
+  @ExceptionHandler(InsufficientStockException.class)
+  public ResponseEntity<StockShortageResponse> handleInsufficientStock(InsufficientStockException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(new StockShortageResponse(ex.getMessage(), ex.getSkuCodes()));
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

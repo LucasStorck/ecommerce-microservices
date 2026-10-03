@@ -83,10 +83,11 @@ This is the JVM (Java 25) failing to open its internal NIO loopback socket on Wi
 Running everything inside WSL (Ubuntu) avoids it: all services start and work there.
 
 ## Next steps
-1. Merge the two open fix PRs (`fix/redis-cache-deserialization` #7, `fix/mongodb-property-prefix` #8) and the seed-scripts/docs branch.
-2. Observability.
-3. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
-4. Consider reserving/decrementing stock on order placement (known oversell limitation, empirically confirmed again during the 1000-SKU load test).
+1. Observability.
+2. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
+3. Consider reserving/decrementing stock on order placement (known oversell limitation, empirically confirmed again during the 1000-SKU load test).
+
+(The two fix PRs — `fix/redis-cache-deserialization` #7, `fix/mongodb-property-prefix` #8 — and the seed-scripts/docs branch are merged into `main`.)
 
 ## Future: Angular frontend
 Planned, not started. Decision: single Git repository, but **not** a Maven monorepo — `frontend/` sits at the root next to the Java modules, outside `<modules>` in the parent `pom.xml`, with its own `package.json` and Angular CLI build. Maven never touches it; CI would run the Java and Node builds as separate steps.

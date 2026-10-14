@@ -67,25 +67,28 @@ cached.
 ### order-service
 
 Port 8082. Receives orders and manages their lifecycle. Before accepting an
-order it asks inventory-service whether the items are in stock. That call is
+order it asks inventory-service to reserve the items. That call is
 synchronous and wrapped in a Resilience4j circuit breaker, so a slow or failing
 inventory service does not take orders down with it. Once an order is placed,
 it publishes an event to Kafka. Data lives in PostgreSQL, where transactions keep
 an order and its items consistent.
 
-Orders can be placed and read. Placing one checks stock first: if an item is
-short the order is rejected with 409, and if inventory-service cannot answer in
-time the order is rejected with 503 rather than accepted unchecked. Once saved,
+Orders can be placed and read. Placing one reserves the stock first, all items or
+none: if an item is short the order is rejected with 409, and if inventory-service cannot answer in
+time the order is rejected with 503 rather than accepted unchecked. If saving the
+order fails after the reservation, the stock is released again. Once saved,
 an `order-placed-events` event is published to Kafka; publishing does not block
 the response, so a slow or unavailable broker does not hold up placing an order.
 
 ### inventory-service
 
-Port 8083. Tracks stock per product and answers the availability check from
+Port 8083. Tracks stock per product and answers stock reservations from
 order-service. Uses its own PostgreSQL instance, separate from orders, so neither
 service can reach into the other's tables. Stock is keyed by `skuCode`, and
 `GET /api/inventory?skuCode=A&skuCode=B` checks several items in one call,
-reporting unknown codes as quantity 0.
+reporting unknown codes as quantity 0. `POST /api/inventory/reserve` takes stock for
+several items atomically (204, or 409 listing the short codes with nothing taken),
+and `POST /api/inventory/release` gives it back.
 
 ### notification-service
 

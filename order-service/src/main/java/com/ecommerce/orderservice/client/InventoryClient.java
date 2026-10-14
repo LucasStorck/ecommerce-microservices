@@ -1,16 +1,25 @@
 package com.ecommerce.orderservice.client;
 
-import com.ecommerce.orderservice.dto.StockResponse;
+import com.ecommerce.orderservice.dto.ReservationItem;
 
 import java.util.List;
 
 public interface InventoryClient {
 
   /**
-   * One entry per distinct skuCode; codes unknown to inventory come back with quantity 0.
+   * Atomically takes the stock for all items, or none of it.
+   *
+   * @throws com.ecommerce.orderservice.exception.InsufficientStockException if any item falls short
+   * @throws com.ecommerce.orderservice.exception.InventoryUnavailableException if inventory
+   *         cannot be reached in time or the circuit is open
+   */
+  void reserve(List<ReservationItem> items);
+
+  /**
+   * Gives a reservation back. Best effort, used to compensate when the order could not be saved.
    *
    * @throws com.ecommerce.orderservice.exception.InventoryUnavailableException if inventory
-   *                                                                            cannot be reached in time or the circuit is open
+   *         cannot be reached in time or the circuit is open
    */
-  List<StockResponse> checkStock(List<String> skuCodes);
+  void release(List<ReservationItem> items);
 }

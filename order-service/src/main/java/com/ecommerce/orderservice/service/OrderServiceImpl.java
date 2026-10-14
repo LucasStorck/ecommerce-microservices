@@ -4,26 +4,28 @@ import com.ecommerce.orderservice.client.InventoryClient;
 import com.ecommerce.orderservice.dto.OrderItemRequest;
 import com.ecommerce.orderservice.dto.OrderRequest;
 import com.ecommerce.orderservice.dto.OrderResponse;
-import com.ecommerce.orderservice.dto.StockResponse;
+import com.ecommerce.orderservice.dto.ReservationItem;
 import com.ecommerce.orderservice.event.OrderEventProducer;
 import com.ecommerce.orderservice.event.OrderItemEvent;
 import com.ecommerce.orderservice.event.OrderPlacedEvent;
-import com.ecommerce.orderservice.exception.InsufficientStockException;
 import com.ecommerce.orderservice.exception.OrderNotFoundException;
 import com.ecommerce.orderservice.mapper.OrderMapper;
 import com.ecommerce.orderservice.model.Order;
 import com.ecommerce.orderservice.repository.OrderRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+
+  private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
 
   private final OrderRepository orderRepository;
   private final OrderMapper orderMapper;
@@ -43,10 +45,18 @@ public class OrderServiceImpl implements OrderService {
   // transaction, which is enough to persist the order and its items atomically.
   @Override
   public OrderResponse placeOrder(OrderRequest orderRequest) {
-    verifyStock(orderRequest);
-    Order order = orderMapper.toEntity(orderRequest);
-    order.setOrderNumber(UUID.randomUUID().toString());
-    Order savedOrder = orderRepository.save(order);
+    List<ReservationItem> reservation = toReservation(orderRequest);
+    inventoryClient.reserve(reservation);
+
+    Order savedOrder;
+    try {
+      Order order = orderMapper.toEntity(orderRequest);
+      order.setOrderNumber(UUID.randomUUID().toString());
+      savedOrder = orderRepository.save(order);
+    } catch (RuntimeException ex) {
+      releaseQuietly(reservation);
+      throw ex;
+    }
     publishOrderPlaced(savedOrder);
     return orderMapper.toResponse(savedOrder);
   }
@@ -77,23 +87,25 @@ public class OrderServiceImpl implements OrderService {
   }
 
   // The same skuCode may appear in more than one item, so quantities are summed per sku
-  // before comparing; otherwise two items of 3 could each pass against a stock of 5.
-  // This only checks: stock is not reserved, so two concurrent orders can still both pass.
-  private void verifyStock(OrderRequest orderRequest) {
-    Map<String, Integer> requested = orderRequest.items().stream()
+  // before reserving; the reservation is atomic in inventory-service, so concurrent orders
+  // can no longer oversell the same units.
+  private List<ReservationItem> toReservation(OrderRequest orderRequest) {
+    return orderRequest.items().stream()
         .collect(Collectors.toMap(OrderItemRequest::skuCode, OrderItemRequest::quantity,
-            Integer::sum, LinkedHashMap::new));
-
-    Map<String, Integer> available = inventoryClient.checkStock(List.copyOf(requested.keySet())).stream()
-        .collect(Collectors.toMap(StockResponse::skuCode, StockResponse::quantity));
-
-    List<String> insufficient = requested.entrySet().stream()
-        .filter(entry -> available.getOrDefault(entry.getKey(), 0) < entry.getValue())
-        .map(Map.Entry::getKey)
+            Integer::sum, LinkedHashMap::new))
+        .entrySet().stream()
+        .map(entry -> new ReservationItem(entry.getKey(), entry.getValue()))
         .toList();
+  }
 
-    if (!insufficient.isEmpty()) {
-      throw new InsufficientStockException(insufficient);
+  // Compensation must not mask the original failure. If it fails too, the stock stays
+  // reserved without an order: logged so it can be reconciled by hand.
+  private void releaseQuietly(List<ReservationItem> reservation) {
+    try {
+      inventoryClient.release(reservation);
+    } catch (RuntimeException releaseFailure) {
+      log.error("Could not release reservation {} after order save failed; stock is leaked",
+          reservation, releaseFailure);
     }
   }
 }

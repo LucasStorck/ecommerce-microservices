@@ -84,11 +84,12 @@ This is the JVM (Java 25) failing to open its internal NIO loopback socket on Wi
 Running everything inside WSL (Ubuntu) avoids it: all services start and work there.
 
 ## Next steps
-1. Merge the two open fix PRs (`fix/redis-cache-deserialization` #7, `fix/mongodb-property-prefix` #8) and the seed-scripts/docs branch.
-2. Observability.
-3. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
-4. Verify the stock reservation at runtime in WSL: reserve decrements, 409 leaves stock untouched, and the 50 concurrent orders on the same SKU never drive quantity below 0.
-5. Order status transitions, and sourcing `price` from `product-service`.
+1. Verify the stock reservation at runtime in WSL with `scripts/verify-reservation.sh` (happy path, 409 leaves stock untouched, all-or-nothing across items, reserve/release, 50 concurrent orders on a stock of 20 → exactly 20 succeed and quantity never goes below 0), plus the manual follow-ups printed at its end (release compensation, 503 fail-closed). Then merge `feat/order-flow` into `main` via PR.
+2. Order status transitions, and sourcing `price` from `product-service`.
+3. Observability.
+4. Angular frontend, consuming the API through the Gateway (see below), so there's a single base URL and no per-service CORS.
+
+(PRs #7, #8 and #9 — the two fixes and the seed scripts/docs — are already merged into `main`.)
 
 ## Future: Angular frontend
 Planned, not started. Decision: single Git repository, but **not** a Maven monorepo — `frontend/` sits at the root next to the Java modules, outside `<modules>` in the parent `pom.xml`, with its own `package.json` and Angular CLI build. Maven never touches it; CI would run the Java and Node builds as separate steps.

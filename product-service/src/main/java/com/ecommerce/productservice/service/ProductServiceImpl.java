@@ -38,6 +38,13 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
+  public List<ProductResponse> searchProductsByName(String name) {
+    return productRepository.findByNameContainingIgnoreCase(name).stream()
+        .map(productMapper::toResponse)
+        .toList();
+  }
+
+  @Override
   @Cacheable(value = "products", key = "#id")
   public ProductResponse getProductById(String id) {
     return productMapper.toResponse(findOrThrow(id));

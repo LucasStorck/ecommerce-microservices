@@ -40,6 +40,11 @@ public class ProductController {
     return skuCodes == null ? productService.getAllProducts() : productService.getProductsBySkuCodes(skuCodes);
   }
 
+  @GetMapping(params = "name")
+  public List<ProductResponse> searchProductsByName(@RequestParam String name) {
+    return productService.searchProductsByName(name);
+  }
+
   @GetMapping("/{id}")
   public ProductResponse getProductById(@PathVariable String id) {
     return productService.getProductById(id);

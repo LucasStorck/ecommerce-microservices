@@ -31,6 +31,24 @@ public class GlobalExceptionHandler {
     return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
   }
 
+  @ExceptionHandler(ProductNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleProductNotFound(ProductNotFoundException ex,
+                                                             HttpServletRequest request) {
+    return error(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+  }
+
+  @ExceptionHandler(ProductServiceUnavailableException.class)
+  public ResponseEntity<ErrorResponse> handleProductUnavailable(ProductServiceUnavailableException ex,
+                                                                HttpServletRequest request) {
+    return error(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request);
+  }
+
+  @ExceptionHandler(InvalidOrderStatusException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidStatus(InvalidOrderStatusException ex,
+                                                           HttpServletRequest request) {
+    return error(HttpStatus.CONFLICT, ex.getMessage(), request);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
     Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()

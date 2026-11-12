@@ -80,6 +80,14 @@ order fails after the reservation, the stock is released again. Once saved,
 an `order-placed-events` event is published to Kafka; publishing does not block
 the response, so a slow or unavailable broker does not hold up placing an order.
 
+Prices are never taken from the client: before reserving stock, order-service
+looks each sku up in product-service (one batch call, behind its own circuit
+breaker). An unknown sku is rejected with 404 and an unreachable product-service
+with 503, in both cases before any stock is touched. Orders start as PENDING and
+can be confirmed or cancelled (`PATCH /api/orders/{id}/confirm` and `/cancel`);
+only PENDING orders can change status, otherwise the answer is 409. Cancelling
+releases the reserved stock.
+
 ### inventory-service
 
 Port 8083. Tracks stock per product and answers stock reservations from

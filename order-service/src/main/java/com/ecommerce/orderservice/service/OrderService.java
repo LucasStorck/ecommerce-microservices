@@ -9,4 +9,6 @@ public interface OrderService {
   OrderResponse placeOrder(OrderRequest orderRequest);
   List<OrderResponse> getAllOrders();
   OrderResponse getOrderById(String id);
+  OrderResponse confirmOrder(String id);
+  OrderResponse cancelOrder(String id);
 }

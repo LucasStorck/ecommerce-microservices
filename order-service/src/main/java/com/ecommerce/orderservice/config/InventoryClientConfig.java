@@ -17,6 +17,7 @@ import java.time.Duration;
 public class InventoryClientConfig {
 
   public static final String INVENTORY_CIRCUIT_BREAKER = "inventory";
+  public static final String PRODUCT_CIRCUIT_BREAKER = "product";
 
   // @LoadBalanced makes "http://inventory-service" resolve through Eureka instead of DNS.
   // The HTTP timeouts are the real guard against a hung connection: they must be shorter
@@ -54,6 +55,6 @@ public class InventoryClientConfig {
         // Spring Cloud's default time limit is 1s, which is easy to trip by accident.
         .timeLimiterConfig(TimeLimiterConfig.custom()
             .timeoutDuration(Duration.ofSeconds(3))
-            .build()), INVENTORY_CIRCUIT_BREAKER);
+            .build()), INVENTORY_CIRCUIT_BREAKER, PRODUCT_CIRCUIT_BREAKER);
   }
 }

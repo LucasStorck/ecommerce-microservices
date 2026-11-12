@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -33,8 +34,10 @@ public class ProductController {
   }
 
   @GetMapping
-  public List<ProductResponse> getAllProducts() {
-    return productService.getAllProducts();
+  public List<ProductResponse> getAllProducts(@RequestParam(name = "skuCode", required = false) List<String> skuCodes) {
+    // With ?skuCode=A&skuCode=B only those products come back (batch lookup used by order-service);
+    // skus that don't exist are simply absent, so the caller decides what a miss means.
+    return skuCodes == null ? productService.getAllProducts() : productService.getProductsBySkuCodes(skuCodes);
   }
 
   @GetMapping("/{id}")

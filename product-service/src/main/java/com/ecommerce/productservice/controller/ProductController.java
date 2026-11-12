@@ -34,8 +34,10 @@ public class ProductController {
   }
 
   @GetMapping
-  public List<ProductResponse> getAllProducts() {
-    return productService.getAllProducts();
+  public List<ProductResponse> getAllProducts(@RequestParam(name = "skuCode", required = false) List<String> skuCodes) {
+    // With ?skuCode=A&skuCode=B only those products come back (batch lookup used by order-service);
+    // skus that don't exist are simply absent, so the caller decides what a miss means.
+    return skuCodes == null ? productService.getAllProducts() : productService.getProductsBySkuCodes(skuCodes);
   }
 
   @GetMapping(params = "name")

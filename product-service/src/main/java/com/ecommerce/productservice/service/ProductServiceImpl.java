@@ -37,6 +37,15 @@ public class ProductServiceImpl implements ProductService {
         .toList();
   }
 
+  // Not cached: unlike the by-id read, a batch has no single key to invalidate when one of
+  // its products changes.
+  @Override
+  public List<ProductResponse> getProductsBySkuCodes(List<String> skuCodes) {
+    return productRepository.findBySkuCodeIn(skuCodes).stream()
+        .map(productMapper::toResponse)
+        .toList();
+  }
+
   @Override
   public List<ProductResponse> searchProductsByName(String name) {
     return productRepository.findByNameContainingIgnoreCase(name).stream()

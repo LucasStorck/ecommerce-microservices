@@ -23,6 +23,7 @@ public interface OrderMapper {
   Order toEntity(OrderRequest request);
 
   @Mapping(target = "order", ignore = true)
+  @Mapping(target = "price", ignore = true) // set from the catalog by the service
   OrderItem toEntity(OrderItemRequest request);
 
   @Mapping(target = "items", source = "orderItems")

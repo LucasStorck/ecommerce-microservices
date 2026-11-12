@@ -17,6 +17,9 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
-# Eureka service name, not a host: resolved by the load-balanced RestClient.
+# Eureka service names, not hosts: resolved by the load-balanced RestClient.
 inventory:
   url: http://inventory-service
+
+product:
+  url: http://product-service
